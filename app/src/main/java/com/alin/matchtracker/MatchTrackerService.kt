@@ -71,10 +71,13 @@ class MatchTrackerService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val summary = Prefs.summaryText(this)
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_add)
-            .setContentTitle("Match Tracker")
-            .setContentText(Prefs.summaryText(this))
+            .setContentTitle(Prefs.titleText(this))
+            .setContentText(summary.substringBefore("\n"))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(summary))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_MAX)
