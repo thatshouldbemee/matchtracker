@@ -1,0 +1,3 @@
+<resources>
+    <style name="Theme.MatchTracker" parent="Theme.MaterialComponents.DayNight.NoActionBar" />
+</resources>
