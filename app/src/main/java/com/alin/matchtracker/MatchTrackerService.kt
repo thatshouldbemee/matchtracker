@@ -31,7 +31,14 @@ class MatchTrackerService : Service() {
         if (intent?.action == ACTION_UPDATE) {
             updateNotification()
         } else {
-            startForeground(NOTIF_ID, buildNotification())
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                startForeground(
+                    NOTIF_ID, buildNotification(),
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                )
+            } else {
+                startForeground(NOTIF_ID, buildNotification())
+            }
         }
         return START_STICKY
     }
@@ -39,9 +46,12 @@ class MatchTrackerService : Service() {
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                CHANNEL_ID, "Match Tracker", NotificationManager.IMPORTANCE_LOW
+                CHANNEL_ID, "Match Tracker", NotificationManager.IMPORTANCE_HIGH
             )
             channel.description = "Hitung match ranked MLBB"
+            channel.setShowBadge(true)
+            channel.enableVibration(false)
+            channel.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)
         }
@@ -67,6 +77,10 @@ class MatchTrackerService : Service() {
             .setContentText(Prefs.summaryText(this))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setSortKey("0")
             .addAction(android.R.drawable.ic_input_add, "+1 Match", incrementPending)
             .build()
     }

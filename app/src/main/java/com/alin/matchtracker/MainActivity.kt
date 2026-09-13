@@ -33,9 +33,12 @@ class MainActivity : AppCompatActivity() {
             val target = targetInput.text.toString().toIntOrNull() ?: 0
             val seasonDays = seasonDaysInput.text.toString().toIntOrNull() ?: 90
             Prefs.setup(this, target, seasonDays)
-            requestNotificationPermissionIfNeeded()
-            startTrackerService()
             refreshSummary()
+            if (hasNotificationPermission()) {
+                startTrackerService()
+            } else {
+                requestNotificationPermissionIfNeeded()
+            }
         }
 
         findViewById<Button>(R.id.resetButton).setOnClickListener {
@@ -61,16 +64,29 @@ class MainActivity : AppCompatActivity() {
         ContextCompat.startForegroundService(this, intent)
     }
 
+    private fun hasNotificationPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
+        return ContextCompat.checkSelfPermission(
+            this, Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
     private fun requestNotificationPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(
-                    this, Manifest.permission.POST_NOTIFICATIONS
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                ActivityCompat.requestPermissions(
-                    this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 100
-                )
-            }
+            ActivityCompat.requestPermissions(
+                this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 100
+            )
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 100 && grantResults.isNotEmpty() &&
+            grantResults[0] == PackageManager.PERMISSION_GRANTED
+        ) {
+            startTrackerService()
         }
     }
 }
