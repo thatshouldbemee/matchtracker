@@ -1,6 +1,7 @@
 package com.alin.matchtracker
 
 import android.Manifest
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -42,9 +43,16 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.resetButton).setOnClickListener {
-            Prefs.resetSeason(this)
-            refreshSummary()
-            startTrackerService()
+            AlertDialog.Builder(this)
+                .setTitle("Reset Musim?")
+                .setMessage("Total match season (${Prefs.getTotal(this)} match) akan dihapus dan mulai dari 0 lagi. Aksi ini tidak bisa dibatalkan.")
+                .setPositiveButton("Ya, Reset") { _, _ ->
+                    Prefs.resetSeason(this)
+                    refreshSummary()
+                    forceNotificationUpdate()
+                }
+                .setNegativeButton("Batal", null)
+                .show()
         }
 
         refreshSummary()
@@ -62,6 +70,13 @@ class MainActivity : AppCompatActivity() {
     private fun startTrackerService() {
         val intent = Intent(this, MatchTrackerService::class.java)
         ContextCompat.startForegroundService(this, intent)
+    }
+
+    private fun forceNotificationUpdate() {
+        val intent = Intent(this, MatchTrackerService::class.java).apply {
+            action = MatchTrackerService.ACTION_UPDATE
+        }
+        startService(intent)
     }
 
     private fun hasNotificationPermission(): Boolean {

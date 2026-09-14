@@ -40,7 +40,9 @@ object Prefs {
         prefs(context).edit()
             .putInt(KEY_TOTAL, 0)
             .putLong(KEY_START, System.currentTimeMillis())
-            .apply()
+            .putInt(KEY_DAILY_COUNT, 0)
+            .putString(KEY_DAILY_DATE, todayKey())
+            .commit()
     }
 
     fun incrementMatch(context: Context): Int {
