@@ -6,12 +6,14 @@ import android.content.Intent
 
 class IncrementReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action == MatchTrackerService.ACTION_INCREMENT) {
-            Prefs.incrementMatch(context)
-            val updateIntent = Intent(context, MatchTrackerService::class.java).apply {
-                action = MatchTrackerService.ACTION_UPDATE
-            }
-            context.startService(updateIntent)
+        when (intent.action) {
+            MatchTrackerService.ACTION_WIN -> Prefs.incrementMatch(context, isWin = true)
+            MatchTrackerService.ACTION_LOSE -> Prefs.incrementMatch(context, isWin = false)
+            else -> return
         }
+        val updateIntent = Intent(context, MatchTrackerService::class.java).apply {
+            action = MatchTrackerService.ACTION_UPDATE
+        }
+        context.startService(updateIntent)
     }
 }

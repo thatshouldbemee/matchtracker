@@ -16,7 +16,8 @@ class MatchTrackerService : Service() {
     companion object {
         const val CHANNEL_ID = "match_tracker_channel"
         const val NOTIF_ID = 1001
-        const val ACTION_INCREMENT = "com.alin.matchtracker.ACTION_INCREMENT"
+        const val ACTION_WIN = "com.alin.matchtracker.ACTION_WIN"
+        const val ACTION_LOSE = "com.alin.matchtracker.ACTION_LOSE"
         const val ACTION_UPDATE = "com.alin.matchtracker.ACTION_UPDATE"
     }
 
@@ -63,11 +64,15 @@ class MatchTrackerService : Service() {
     }
 
     private fun buildNotification(): Notification {
-        val incrementIntent = Intent(this, IncrementReceiver::class.java).apply {
-            action = ACTION_INCREMENT
-        }
-        val incrementPending = PendingIntent.getBroadcast(
-            this, 0, incrementIntent,
+        val winIntent = Intent(this, IncrementReceiver::class.java).apply { action = ACTION_WIN }
+        val winPending = PendingIntent.getBroadcast(
+            this, 1, winIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val loseIntent = Intent(this, IncrementReceiver::class.java).apply { action = ACTION_LOSE }
+        val losePending = PendingIntent.getBroadcast(
+            this, 2, loseIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -84,7 +89,8 @@ class MatchTrackerService : Service() {
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setSortKey("0")
-            .addAction(android.R.drawable.ic_input_add, "+1 Match", incrementPending)
+            .addAction(android.R.drawable.ic_menu_add, "✅ Menang", winPending)
+            .addAction(android.R.drawable.ic_delete, "❌ Kalah", losePending)
             .build()
     }
 }

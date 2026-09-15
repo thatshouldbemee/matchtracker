@@ -7,11 +7,6 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.ceil
 
-/**
- * Simple SharedPreferences wrapper holding season target, season length,
- * total matches played, and the season start timestamp. Reset is manual —
- * only [resetSeason] clears the counter, nothing resets it automatically.
- */
 object Prefs {
     private const val FILE = "match_tracker_prefs"
     private const val KEY_TARGET = "target_matches"
@@ -20,6 +15,8 @@ object Prefs {
     private const val KEY_START = "start_timestamp"
     private const val KEY_DAILY_COUNT = "daily_count"
     private const val KEY_DAILY_DATE = "daily_date"
+    private const val KEY_WINS = "wins"
+    private const val KEY_LOSSES = "losses"
 
     private val dayFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
     private fun todayKey() = dayFormat.format(Date())
@@ -42,21 +39,34 @@ object Prefs {
             .putLong(KEY_START, System.currentTimeMillis())
             .putInt(KEY_DAILY_COUNT, 0)
             .putString(KEY_DAILY_DATE, todayKey())
+            .putInt(KEY_WINS, 0)
+            .putInt(KEY_LOSSES, 0)
             .commit()
     }
 
-    fun incrementMatch(context: Context): Int {
+    fun incrementMatch(context: Context, isWin: Boolean): Int {
         val newTotal = getTotal(context) + 1
         val newDaily = getDailyCount(context) + 1
-        prefs(context).edit()
+        val editor = prefs(context).edit()
             .putInt(KEY_TOTAL, newTotal)
             .putInt(KEY_DAILY_COUNT, newDaily)
             .putString(KEY_DAILY_DATE, todayKey())
-            .apply()
+        if (isWin) {
+            editor.putInt(KEY_WINS, getWins(context) + 1)
+        } else {
+            editor.putInt(KEY_LOSSES, getLosses(context) + 1)
+        }
+        editor.apply()
         return newTotal
     }
 
-    /** Matches logged today. Auto-rolls over to 0 when the calendar day changes — no manual action needed. */
+    fun getWins(context: Context) = prefs(context).getInt(KEY_WINS, 0)
+    fun getLosses(context: Context) = prefs(context).getInt(KEY_LOSSES, 0)
+    fun winRate(context: Context): Double {
+        val total = getWins(context) + getLosses(context)
+        return if (total == 0) 0.0 else getWins(context) * 100.0 / total
+    }
+
     fun getDailyCount(context: Context): Int {
         val storedDate = prefs(context).getString(KEY_DAILY_DATE, null)
         return if (storedDate == todayKey()) prefs(context).getInt(KEY_DAILY_COUNT, 0) else 0
@@ -67,7 +77,6 @@ object Prefs {
     fun getTotal(context: Context) = prefs(context).getInt(KEY_TOTAL, 0)
     fun getStart(context: Context) = prefs(context).getLong(KEY_START, System.currentTimeMillis())
 
-    /** Whole days elapsed since season start, minimum 0. */
     fun elapsedDays(context: Context): Int {
         val diffMs = System.currentTimeMillis() - getStart(context)
         return TimeUnit.MILLISECONDS.toDays(diffMs).toInt().coerceAtLeast(0)
@@ -79,20 +88,21 @@ object Prefs {
     fun remainingTarget(context: Context): Int =
         (getTarget(context) - getTotal(context)).coerceAtLeast(0)
 
-    /** Matches/day required from now on to still hit the season target. */
     fun requiredPace(context: Context): Double =
         remainingTarget(context).toDouble() / remainingDays(context).toDouble()
 
-    /** Average matches/day actually played so far this season. */
     fun currentPace(context: Context): Double {
         val days = elapsedDays(context).coerceAtLeast(1)
         return getTotal(context).toDouble() / days.toDouble()
     }
 
-    /** Target match hari ini, dibulatkan ke atas supaya tetap aman kejar target season. */
     fun dailyTarget(context: Context): Int = ceil(requiredPace(context)).toInt().coerceAtLeast(0)
 
+    fun isSeasonOver(context: Context): Boolean =
+        elapsedDays(context) >= getSeasonDays(context)
+
     fun titleText(context: Context): String {
+        if (isSeasonOver(context)) return "🏁 Season selesai! Lihat rekap"
         val daily = getDailyCount(context)
         val target = dailyTarget(context)
         return if (daily >= target && target > 0) {
@@ -105,6 +115,17 @@ object Prefs {
     fun summaryText(context: Context): String {
         val total = getTotal(context)
         val target = getTarget(context)
+        val wins = getWins(context)
+        val losses = getLosses(context)
+        val wr = String.format("%.1f", winRate(context))
+
+        if (isSeasonOver(context)) {
+            return "Season berakhir!\n" +
+                "Total match: $total/$target\n" +
+                "Menang: $wins  •  Kalah: $losses  •  Winrate: $wr%\n" +
+                "Pencet Reset Musim buat mulai season baru."
+        }
+
         val daily = getDailyCount(context)
         val dailyGoal = dailyTarget(context)
         val remaining = remainingDays(context)
@@ -118,6 +139,7 @@ object Prefs {
 
         return "Hari ini: $daily/$dailyGoal match\n" +
             "Season: $total/$target match  •  sisa $remaining hari\n" +
+            "Menang: $wins  •  Kalah: $losses  •  Winrate: $wr%\n" +
             statusLine
     }
 }
